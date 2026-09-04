@@ -30,6 +30,30 @@ class AIModelGatewayTests(unittest.TestCase):
         self.assertIn("claude", status)
         self.assertEqual(status["huggingface"]["name"], "Hugging Face")
 
+    def test_config_without_models_falls_back_to_builtin_model_definitions(self):
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as config_file:
+            config_file.write("{}")
+            config_file.flush()
+
+            gateway = AIModelGateway(config_path=config_file.name)
+
+        status = gateway.get_status()
+
+        self.assertIn("openrouter", status)
+        self.assertEqual(status["groq"]["name"], "Groq")
+
+    def test_config_with_non_mapping_models_falls_back_to_builtin_model_definitions(self):
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as config_file:
+            config_file.write('{"models": []}')
+            config_file.flush()
+
+            gateway = AIModelGateway(config_path=config_file.name)
+
+        status = gateway.get_status()
+
+        self.assertIn("huggingface", status)
+        self.assertEqual(status["claude"]["name"], "Claude")
+
     def test_directory_config_path_falls_back_to_builtin_model_definitions(self):
         with tempfile.TemporaryDirectory() as config_dir:
             gateway = AIModelGateway(config_path=config_dir)

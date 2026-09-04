@@ -3,6 +3,7 @@
 AI Model Gateway - Automatische Integration aller KI-Modelle mit Claude
 """
 
+import copy
 import json
 import asyncio
 import os
@@ -54,6 +55,10 @@ DEFAULT_CONFIG = {
 }
 
 
+def default_config() -> Dict[str, Any]:
+    return copy.deepcopy(DEFAULT_CONFIG)
+
+
 @dataclass
 class ModelConfig:
     provider: str
@@ -77,10 +82,12 @@ class AIModelGateway:
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    config = json.load(f)
+                    if isinstance(config, dict) and isinstance(config.get("models"), dict):
+                        return config
             except (OSError, json.JSONDecodeError):
                 pass
-        return DEFAULT_CONFIG
+        return default_config()
 
     def _load_models(self) -> Dict[str, ModelConfig]:
         """Lade alle verfügbaren Modelle aus der Konfiguration"""
