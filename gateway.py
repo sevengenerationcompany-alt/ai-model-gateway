@@ -75,8 +75,11 @@ class AIModelGateway:
 
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                pass
         return DEFAULT_CONFIG
 
     def _load_models(self) -> Dict[str, ModelConfig]:

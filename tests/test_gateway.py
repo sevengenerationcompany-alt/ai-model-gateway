@@ -17,6 +17,18 @@ class AIModelGatewayTests(unittest.TestCase):
         self.assertFalse(status["claude"]["available"])
         self.assertEqual(status["openrouter"]["name"], "OpenRouter")
 
+    def test_invalid_config_falls_back_to_builtin_model_definitions(self):
+        invalid_config_path = "/tmp/invalid-ai-model-gateway-config.json"
+        with open(invalid_config_path, "w", encoding="utf-8") as invalid_config:
+            invalid_config.write("{invalid json")
+
+        gateway = AIModelGateway(config_path=invalid_config_path)
+
+        status = gateway.get_status()
+
+        self.assertIn("claude", status)
+        self.assertEqual(status["huggingface"]["name"], "Hugging Face")
+
     def test_auto_route_returns_empty_result_when_no_providers_are_configured(self):
         gateway = AIModelGateway(config_path="/tmp/does-not-exist-config.json")
 
