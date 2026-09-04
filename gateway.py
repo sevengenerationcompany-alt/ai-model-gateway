@@ -121,7 +121,7 @@ class AIModelGateway:
                 response = await client.post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers={
-                        "Authorization": f"******",
+                        "Authorization": f"Bearer {config.api_key}",
                         "HTTP-Referer": "https://github.com/sevengenerationcompany-alt/ai-model-gateway"
                     },
                     json={
@@ -145,7 +145,7 @@ class AIModelGateway:
                 response = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={
-                        "Authorization": f"******",
+                        "Authorization": f"Bearer {config.api_key}",
                         "Content-Type": "application/json"
                     },
                     json={
@@ -168,7 +168,7 @@ class AIModelGateway:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"https://api-inference.huggingface.co/models/{model}",
-                    headers={"Authorization": f"******"},
+                    headers={"Authorization": f"Bearer {config.api_key}"},
                     json={"inputs": prompt}
                 )
                 return response.json()[0]["generated_text"]
