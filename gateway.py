@@ -78,7 +78,7 @@ class AIModelGateway:
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except json.JSONDecodeError:
+            except (OSError, json.JSONDecodeError):
                 pass
         return DEFAULT_CONFIG
 
@@ -97,7 +97,7 @@ class AIModelGateway:
             )
         return models
 
-    async def query_claude(self, prompt: str, model: str = "claude-3-5-sonnet-20241022") -> str:
+    async def query_claude(self, prompt: str, model: str = "claude-3-5-sonnet-20241022") -> Optional[str]:
         """Frage Claude mit automatischem Fallback ab"""
         if self.claude_client is None:
             return None
@@ -114,7 +114,7 @@ class AIModelGateway:
             print(f"Claude error: {e}")
             return None
 
-    async def query_openrouter(self, prompt: str, model: str = "mistralai/mistral-7b-instruct:free") -> str:
+    async def query_openrouter(self, prompt: str, model: str = "mistralai/mistral-7b-instruct:free") -> Optional[str]:
         """Frage OpenRouter ab"""
         config = self.models.get("openrouter")
         if httpx is None or config is None or not config.api_key:
@@ -138,7 +138,7 @@ class AIModelGateway:
             print(f"OpenRouter error: {e}")
             return None
 
-    async def query_groq(self, prompt: str, model: str = "mixtral-8x7b-32768") -> str:
+    async def query_groq(self, prompt: str, model: str = "mixtral-8x7b-32768") -> Optional[str]:
         """Frage Groq ab"""
         config = self.models.get("groq")
         if httpx is None or config is None or not config.api_key:
@@ -162,7 +162,7 @@ class AIModelGateway:
             print(f"Groq error: {e}")
             return None
 
-    async def query_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.1") -> str:
+    async def query_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.1") -> Optional[str]:
         """Frage Hugging Face ab"""
         config = self.models.get("huggingface")
         if httpx is None or config is None or not config.api_key:
@@ -174,7 +174,12 @@ class AIModelGateway:
                     headers={"Authorization": f"Bearer {config.api_key}"},
                     json={"inputs": prompt}
                 )
-                return response.json()[0]["generated_text"]
+                payload = response.json()
+                if isinstance(payload, list) and payload:
+                    return payload[0].get("generated_text")
+                if isinstance(payload, dict):
+                    return payload.get("generated_text")
+                return None
         except Exception as e:
             print(f"Hugging Face error: {e}")
             return None
