@@ -6,7 +6,10 @@ Integration Helper - Einfache Integration in alle Projekte
 import os
 import sys
 import json
+import shutil
+from pathlib import Path
 from gateway import AIModelGateway
+from gateway import default_config
 import asyncio
 
 class ProjectIntegrator:
@@ -15,7 +18,11 @@ class ProjectIntegrator:
     
     def inject_into_project(self, project_path: str):
         """Injiziere die Gateway-Integration in ein existierendes Projekt"""
-        print(f"📦 Injiziere Gateway in {project_path}...")
+        project_dir = Path(project_path)
+        gateway_dir = project_dir / "ai_gateway"
+        gateway_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"📦 Injiziere Gateway in {project_dir}...")
         
         # Erstelle .env Template
         env_template = """# AI Model Gateway - Konfiguration
@@ -23,13 +30,26 @@ ANTHROPIC_API_KEY=your_key_here
 OPENROUTER_API_KEY=your_key_here
 GROQ_API_KEY=your_key_here
 HUGGINGFACE_API_KEY=your_key_here
-REPLICATE_API_KEY=your_key_here
-TOGETHER_API_KEY=your_key_here
 """
-        env_path = os.path.join(project_path, ".env.gateway")
-        with open(env_path, 'w') as f:
+        env_path = project_dir / ".env.gateway"
+        with open(env_path, 'w', encoding='utf-8') as f:
             f.write(env_template)
         print(f"✅ .env Template erstellt: {env_path}")
+
+        source_dir = Path(__file__).resolve().parent
+        shutil.copy2(source_dir / "gateway.py", gateway_dir / "gateway.py")
+
+        requirements_path = source_dir / "requirements.txt"
+        if requirements_path.exists():
+            shutil.copy2(requirements_path, gateway_dir / "requirements.txt")
+
+        with open(gateway_dir / "config.json", 'w', encoding='utf-8') as f:
+            json.dump(default_config(), f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+        with open(gateway_dir / "__init__.py", 'w', encoding='utf-8') as f:
+            f.write("")
+        print(f"✅ Gateway-Dateien erstellt: {gateway_dir}")
         
         # Erstelle Integrations-Wrapper
         wrapper_code = '''#!/usr/bin/env python3
@@ -88,8 +108,8 @@ if __name__ == "__main__":
     result = query_ai_sync("Hallo, wer bin ich?")
     print(f"Antwort: {result}")
 '''
-        wrapper_path = os.path.join(project_path, "ai_gateway_wrapper.py")
-        with open(wrapper_path, 'w') as f:
+        wrapper_path = project_dir / "ai_gateway_wrapper.py"
+        with open(wrapper_path, 'w', encoding='utf-8') as f:
             f.write(wrapper_code)
         print(f"✅ Integrations-Wrapper erstellt: {wrapper_path}")
 

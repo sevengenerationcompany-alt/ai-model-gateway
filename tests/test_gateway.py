@@ -1,8 +1,13 @@
 import asyncio
+import importlib.util
+import json
+import os
+import sys
 import tempfile
 import unittest
 
 from gateway import AIModelGateway
+from integration_helper import ProjectIntegrator
 
 
 class AIModelGatewayTests(unittest.TestCase):
@@ -71,6 +76,61 @@ class AIModelGatewayTests(unittest.TestCase):
         self.assertEqual(result["prompt"], "Hallo")
         self.assertEqual(result["responses"], {})
         self.assertIsNone(result["primary"])
+
+    def test_project_integration_creates_embedded_gateway_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_dir = os.path.join(temp_dir, "project")
+            integrator = ProjectIntegrator(AIModelGateway())
+
+            integrator.inject_into_project(project_dir)
+
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, ".env.gateway")))
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, "ai_gateway_wrapper.py")))
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, "ai_gateway", "gateway.py")))
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, "ai_gateway", "config.json")))
+            self.assertTrue(os.path.isfile(os.path.join(project_dir, "ai_gateway", "requirements.txt")))
+
+            with open(os.path.join(project_dir, "ai_gateway", "config.json"), encoding="utf-8") as f:
+                config = json.load(f)
+
+            self.assertIn("models", config)
+            self.assertIn("claude", config["models"])
+
+    def test_project_integration_env_template_only_lists_supported_keys(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_dir = os.path.join(temp_dir, "project")
+            integrator = ProjectIntegrator(AIModelGateway())
+
+            integrator.inject_into_project(project_dir)
+
+            with open(os.path.join(project_dir, ".env.gateway"), encoding="utf-8") as f:
+                env_template = f.read()
+
+            self.assertIn("ANTHROPIC_API_KEY=your_key_here", env_template)
+            self.assertIn("OPENROUTER_API_KEY=your_key_here", env_template)
+            self.assertNotIn("REPLICATE_API_KEY", env_template)
+            self.assertNotIn("TOGETHER_API_KEY", env_template)
+
+    def test_generated_wrapper_loads_embedded_gateway(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_dir = os.path.join(temp_dir, "project")
+            integrator = ProjectIntegrator(AIModelGateway())
+
+            integrator.inject_into_project(project_dir)
+
+            wrapper_path = os.path.join(project_dir, "ai_gateway_wrapper.py")
+            spec = importlib.util.spec_from_file_location("generated_ai_gateway_wrapper", wrapper_path)
+            module = importlib.util.module_from_spec(spec)
+            self.assertIsNotNone(spec)
+            self.assertIsNotNone(spec.loader)
+
+            original_sys_path = sys.path[:]
+            try:
+                sys.path.insert(0, project_dir)
+                spec.loader.exec_module(module)
+                self.assertIsNone(module.query_ai_sync("Hallo"))
+            finally:
+                sys.path[:] = original_sys_path
 
 
 if __name__ == "__main__":
