@@ -1,4 +1,5 @@
 import asyncio
+import tempfile
 import unittest
 
 from gateway import AIModelGateway
@@ -18,11 +19,11 @@ class AIModelGatewayTests(unittest.TestCase):
         self.assertEqual(status["openrouter"]["name"], "OpenRouter")
 
     def test_invalid_config_falls_back_to_builtin_model_definitions(self):
-        invalid_config_path = "/tmp/invalid-ai-model-gateway-config.json"
-        with open(invalid_config_path, "w", encoding="utf-8") as invalid_config:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as invalid_config:
             invalid_config.write("{invalid json")
+            invalid_config.flush()
 
-        gateway = AIModelGateway(config_path=invalid_config_path)
+            gateway = AIModelGateway(config_path=invalid_config.name)
 
         status = gateway.get_status()
 
